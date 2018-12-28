@@ -19,6 +19,7 @@ package com.alibaba.dubbo.registry.support;
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.utils.ConcurrentHashSet;
+import com.alibaba.dubbo.common.utils.ExecutorUtil;
 import com.alibaba.dubbo.common.utils.NamedThreadFactory;
 import com.alibaba.dubbo.registry.NotifyListener;
 
@@ -34,7 +35,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * FailbackRegistry. (SPI, Prototype, ThreadSafe)
@@ -58,12 +58,16 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     private final ConcurrentMap<URL, Map<NotifyListener, List<URL>>> failedNotified = new ConcurrentHashMap<URL, Map<NotifyListener, List<URL>>>();
 
-    private AtomicBoolean destroyed = new AtomicBoolean(false);
+    /**
+     * The time in milliseconds the retryExecutor will wait
+     */
+    private final int retryPeriod;
 
     public FailbackRegistry(URL url) {
         super(url);
-        int retryPeriod = url.getParameter(Constants.REGISTRY_RETRY_PERIOD_KEY, Constants.DEFAULT_REGISTRY_RETRY_PERIOD);
+        this.retryPeriod = url.getParameter(Constants.REGISTRY_RETRY_PERIOD_KEY, Constants.DEFAULT_REGISTRY_RETRY_PERIOD);
         this.retryFuture = retryExecutor.scheduleWithFixedDelay(new Runnable() {
+            @Override
             public void run() {
                 // Check and connect to the registry
                 try {
@@ -125,9 +129,6 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void register(URL url) {
-        if (destroyed.get()){
-            return;
-        }
         super.register(url);
         failedRegistered.remove(url);
         failedUnregistered.remove(url);
@@ -158,9 +159,6 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void unregister(URL url) {
-        if (destroyed.get()){
-            return;
-        }
         super.unregister(url);
         failedRegistered.remove(url);
         failedUnregistered.remove(url);
@@ -191,9 +189,6 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void subscribe(URL url, NotifyListener listener) {
-        if (destroyed.get()){
-            return;
-        }
         super.subscribe(url, listener);
         removeFailedSubscribed(url, listener);
         try {
@@ -228,9 +223,6 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void unsubscribe(URL url, NotifyListener listener) {
-        if (destroyed.get()){
-            return;
-        }
         super.unsubscribe(url, listener);
         removeFailedSubscribed(url, listener);
         try {
@@ -448,26 +440,14 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void destroy() {
-        if (!canDestroy()){
-            return;
-        }
         super.destroy();
         try {
             retryFuture.cancel(true);
         } catch (Throwable t) {
             logger.warn(t.getMessage(), t);
         }
+        ExecutorUtil.gracefulShutdown(retryExecutor, retryPeriod);
     }
-
-    // TODO: 2017/8/30 to abstract this method
-    protected boolean canDestroy(){
-        if (destroyed.compareAndSet(false, true)) {
-            return true;
-        }else{
-            return false;
-        }
-    }
-
 
     // ==== Template method ====
 

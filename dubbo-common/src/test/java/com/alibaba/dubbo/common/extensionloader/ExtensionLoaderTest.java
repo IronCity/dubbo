@@ -44,6 +44,10 @@ import com.alibaba.dubbo.common.extensionloader.ext8_add.impl.AddExt1_ManualAdd2
 import com.alibaba.dubbo.common.extensionloader.ext8_add.impl.AddExt2_ManualAdaptive;
 import com.alibaba.dubbo.common.extensionloader.ext8_add.impl.AddExt3_ManualAdaptive;
 import com.alibaba.dubbo.common.extensionloader.ext8_add.impl.AddExt4_ManualAdaptive;
+import com.alibaba.dubbo.common.extensionloader.ext9_empty.Ext9Empty;
+import com.alibaba.dubbo.common.extensionloader.ext9_empty.impl.Ext9EmptyImpl;
+import com.alibaba.dubbo.common.extensionloader.injection.InjectExt;
+import com.alibaba.dubbo.common.extensionloader.injection.impl.InjectExtImpl;
 
 import junit.framework.Assert;
 import org.junit.Test;
@@ -241,6 +245,16 @@ public class ExtensionLoaderTest {
     }
 
     @Test
+    public void test_AddExtension_NoExtend() throws Exception {
+//        ExtensionLoader.getExtensionLoader(Ext9Empty.class).getSupportedExtensions();
+        ExtensionLoader.getExtensionLoader(Ext9Empty.class).addExtension("ext9", Ext9EmptyImpl.class);
+        Ext9Empty ext = ExtensionLoader.getExtensionLoader(Ext9Empty.class).getExtension("ext9");
+
+        assertThat(ext, instanceOf(Ext9Empty.class));
+        assertEquals("ext9", ExtensionLoader.getExtensionLoader(Ext9Empty.class).getExtensionName(Ext9EmptyImpl.class));
+    }
+
+    @Test
     public void test_AddExtension_ExceptionWhenExistedExtension() throws Exception {
         SimpleExt ext = ExtensionLoader.getExtensionLoader(SimpleExt.class).getExtension("impl1");
 
@@ -402,6 +416,16 @@ public class ExtensionLoaderTest {
         Assert.assertEquals(2, list.size());
         Assert.assertTrue(list.get(0).getClass() == ActivateExt1Impl1.class);
         Assert.assertTrue(list.get(1).getClass() == OrderActivateExtImpl1.class);
+    }
+
+    @Test
+    public void testInjectExtension() {
+        // test default
+        InjectExt injectExt = ExtensionLoader.getExtensionLoader(InjectExt.class).getExtension("injection");
+        InjectExtImpl injectExtImpl = (InjectExtImpl) injectExt;
+        org.junit.Assert.assertNotNull(injectExtImpl.getSimpleExt());
+        org.junit.Assert.assertNull(injectExtImpl.getSimpleExt1());
+        org.junit.Assert.assertNull(injectExtImpl.getGenericType());
     }
 
 }

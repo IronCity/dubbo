@@ -27,6 +27,7 @@ import java.util.Map;
 public class CollectionUtils {
 
     private static final Comparator<String> SIMPLE_NAME_COMPARATOR = new Comparator<String>() {
+        @Override
         public int compare(String s1, String s2) {
             if (s1 == null && s2 == null) {
                 return 0;
@@ -94,7 +95,7 @@ public class CollectionUtils {
             return null;
         }
         Map<String, String> map = new HashMap<String, String>();
-        if (list == null || list.isEmpty()) {
+        if (list.isEmpty()) {
             return map;
         }
         for (String item : list) {
@@ -113,7 +114,7 @@ public class CollectionUtils {
             return null;
         }
         List<String> list = new ArrayList<String>();
-        if (map == null || map.size() == 0) {
+        if (map.size() == 0) {
             return list;
         }
         for (Map.Entry<String, String> entry : map.entrySet()) {
